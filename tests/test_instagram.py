@@ -48,7 +48,7 @@ def test_console_log_activity():
 
 
 def test_reel_reaction_selection():
-    from nexus_ig.services.reel_reactor import get_reel_reaction_emoji, handle_reel_reaction
+    from nexus_ig.services.reel_reactor import get_reel_reaction_emoji, handle_reel_reaction, is_reel_message
     from unittest.mock import MagicMock
 
     # Love category
@@ -57,7 +57,7 @@ def test_reel_reaction_selection():
 
     # Funny category
     funny_emoji = get_reel_reaction_emoji("Lmao so true 😂 #memes #funny #roast")
-    assert funny_emoji in ["😂", "🤣", "💀", "😹"]
+    assert funny_emoji in ["😂", "🤣", "💀", "😹", "🤡"]
 
     # Fire category
     fire_emoji = get_reel_reaction_emoji("Sigma male entry #attitude #savage #fire")
@@ -65,15 +65,37 @@ def test_reel_reaction_selection():
 
     # Sad category
     sad_emoji = get_reel_reaction_emoji("Heartbroken alone in the rain #sad #broken #cry")
-    assert sad_emoji in ["🥺", "💔", "😢", "🥀"]
+    assert sad_emoji in ["🥺", "💔", "😢", "🥀", "😭"]
 
     # Anime category
     anime_emoji = get_reel_reaction_emoji("Gojo domain expansion #anime #jujutsukaisen")
-    assert anime_emoji in ["✨", "⚡", "🌸", "⚔️", "🔥"]
+    assert anime_emoji in ["✨", "⚡", "🌸", "⚔️", "🎌"]
+
+    # Tech coding category
+    coding_emoji = get_reel_reaction_emoji("Debugging python bug in vscode #developer #coding")
+    assert coding_emoji in ["💻", "👨‍💻", "⚙️", "🚀", "🤖"]
+
+    # Sports category
+    sports_emoji = get_reel_reaction_emoji("Virat Kohli masterclass batting #cricket #ipl")
+    assert sports_emoji in ["🏏", "⚽", "🏆", "🥇", "🔥"]
 
     # Fallback for unclassified reel (guaranteed reaction)
     default_emoji = get_reel_reaction_emoji("")
     assert isinstance(default_emoji, str) and len(default_emoji) > 0
+
+    # Test is_reel_message with xma_clip, media_share, generic_xma
+    m_xma = MagicMock()
+    m_xma.item_type = "xma_clip"
+    assert is_reel_message(m_xma) is True
+
+    m_share = MagicMock()
+    m_share.item_type = "media_share"
+    assert is_reel_message(m_share) is True
+
+    m_link = MagicMock()
+    m_link.item_type = "text"
+    m_link.text = "Check this out https://www.instagram.com/reel/Dao9M0Ss9zh/"
+    assert is_reel_message(m_link) is True
 
     # Test handle_reel_reaction with mock client
     mock_cl = MagicMock()
@@ -85,6 +107,7 @@ def test_reel_reaction_selection():
     mock_msg.clip = None
     mock_msg.media_share = None
     mock_msg.xma_share = None
+    mock_msg.raw_xma = None
 
     res = handle_reel_reaction(mock_cl, "thread_999", mock_msg)
     assert res in ["❤️", "🥰", "💖", "💕", "😍"]

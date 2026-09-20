@@ -7,7 +7,7 @@ from . import console
 from ..instagram.login import login_client
 from ..instagram.groups import is_group_thread
 from ..instagram.users import find_sender_name
-from ..services.reel_reactor import handle_reel_reaction
+from ..services.reel_reactor import handle_reel_reaction, is_reel_message
 from .scheduler import Scheduler
 from .storage import Storage
 
@@ -16,19 +16,31 @@ def parse_message_action(msg) -> tuple[str, str]:
     """Extract (action_type, content_preview) from instagrapi DirectMessage."""
     item_type = getattr(msg, "item_type", "text")
     if item_type == "text":
-        return "text", (getattr(msg, "text", "") or "").strip()
-    elif item_type in ("clip", "reel_share"):
+        text_val = (getattr(msg, "text", "") or "").strip()
+        if "instagram.com/reel" in text_val or "/reels/" in text_val:
+            return "reel", text_val
+        return "text", text_val
+    elif item_type in ("xma_clip", "clip", "reel_share"):
         caption = ""
+        xma = getattr(msg, "xma_share", None)
+        if xma:
+            caption = (getattr(xma, "title", "") if not isinstance(xma, dict) else xma.get("title", "")) or \
+                      (getattr(xma, "header_title_text", "") if not isinstance(xma, dict) else xma.get("header_title_text", "")) or ""
         clip = getattr(msg, "clip", None) or getattr(msg, "reel_share", None)
         if clip:
-            caption = getattr(clip, "caption_text", "") or getattr(clip, "title", "") or ""
-        return "reel", caption.strip()
+            caption = caption or getattr(clip, "caption_text", "") or getattr(clip, "title", "") or ""
+        return "reel", (caption or "Instagram Reel").strip()
     elif item_type == "media_share":
         caption = ""
         share = getattr(msg, "media_share", None)
         if share:
             caption = getattr(share, "caption_text", "") or getattr(share, "title", "") or ""
-        return "media_share", caption.strip()
+        return "reel", (caption or "Shared Post/Reel").strip()
+    elif item_type == "generic_xma":
+        raw = getattr(msg, "raw_xma", {}) or {}
+        if isinstance(raw, dict) and ("xma_clip" in raw or "clip" in raw):
+            return "reel", "Instagram Reel"
+        return "sticker", ""
     elif item_type == "media":
         media = getattr(msg, "media", None)
         media_type = getattr(media, "media_type", 1) if media else 1
@@ -217,12 +229,7 @@ class NexusBot:
                                 )
 
                                 # 🎬 Auto-React to Reels based on Hashtags / Keywords
-                                is_reel = (
-                                    act_type in ("reel", "clip", "reel_share")
-                                    or getattr(msg, "item_type", "") in ("clip", "reel_share")
-                                    or (act_type == "link" and "instagram.com/reel" in act_content)
-                                )
-                                if not is_bot and is_reel:
+                                if not is_bot and is_reel_message(msg):
                                     reacted_emoji = handle_reel_reaction(self.cl, thread.pk, msg)
                                     if reacted_emoji:
                                         console.log_activity(

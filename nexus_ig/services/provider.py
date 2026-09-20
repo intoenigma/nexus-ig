@@ -20,6 +20,10 @@ class InstagramProvider:
         except Exception:
             pass
 
+    def __getattr__(self, name):
+        """Delegate missing methods directly to underlying instagrapi Client."""
+        return getattr(self.client, name)
+
     def apply_config(self, config):
         if not config:
             self.client.delay_range = [0, 0]
