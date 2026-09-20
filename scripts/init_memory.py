@@ -17,18 +17,10 @@ def main():
 
     console.memory_screen()
 
-    if not os.path.exists(config.session_file):
-        console.error(f"Session file '{config.session_file}' not found. Run 'python login.py' first.")
-        storage.close()
-        return
-
-    cl = InstagramProvider()
-    try:
-        console.status("SESSION", f"Loading {config.session_file}")
-        cl.load_settings(config.session_file)
-        cl.login_by_sessionid(cl.sessionid)
-    except Exception as exc:
-        console.error(f"Login failed: {exc}")
+    from nexus_ig.instagram.login import login_client
+    cl, my_pk, my_username = login_client(config)
+    if not cl:
+        console.error("Login failed. Run 'python login.py' to authenticate.")
         storage.close()
         return
 

@@ -202,10 +202,27 @@ def startup(config, account_name, account_id):
 
 def login_screen():
     banner()
-    section("SESSION LOGIN")
-    row("Step 1", "Open Instagram.com in browser")
-    row("Step 2", "Inspect -> Application -> Cookies")
-    row("Step 3", "Copy the sessionid cookie value")
+    section("INSTAGRAM AUTHENTICATION")
+    
+    table = Table(
+        title="[bold bright_yellow]How to Get Your Instagram Session ID[/bold bright_yellow]",
+        show_header=True,
+        header_style="bold bright_cyan",
+        box=box.ROUNDED,
+        expand=True,
+    )
+    table.add_column("Step", style="bold bright_magenta", width=6, justify="center")
+    table.add_column("Desktop (Chrome / Edge / Firefox)", style="bright_white")
+    table.add_column("Mobile (Kiwi / Termux)", style="bright_white")
+
+    table.add_row("1", "Log in to instagram.com", "Log in to instagram.com in Kiwi Browser")
+    table.add_row("2", "Press F12 -> Application / Storage", "Open Developer Tools or Cookie extension")
+    table.add_row("3", "Click Cookies -> instagram.com", "Find and select 'sessionid'")
+    table.add_row("4", "Copy 'sessionid' value & paste below", "Copy full 'sessionid' value & paste below")
+
+    _con.print(table)
+    _con.print("\n[dim cyan]Note: Session ID will be saved permanently to .env & session.json (no repeat logins needed!)[/dim cyan]\n")
+
 
 
 def memory_screen():
