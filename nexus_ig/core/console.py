@@ -152,50 +152,110 @@ def error(message):
     status("ERROR", message)
 
 
+# ── User-friendly Activity Logging ─────────────────────────────────
+
+_USER_COLORS = [
+    "bright_cyan",
+    "bright_yellow",
+    "bright_magenta",
+    "bright_green",
+    "bright_blue",
+    "orange1",
+    "deep_pink1",
+    "spring_green1",
+    "light_goldenrod1",
+]
+
+
+def get_user_color(username: str) -> str:
+    if not username:
+        return "white"
+    idx = sum(ord(c) for c in str(username)) % len(_USER_COLORS)
+    return _USER_COLORS[idx]
+
+
+def log_activity(group_name: str, sender_name: str, action_type: str, content: str = "", is_bot: bool = False, is_admin: bool = False):
+    """Format and stream live group chat events cleanly without developer noise."""
+    stamp = time.strftime("%H:%M:%S")
+    grp = group_name or "Direct Message"
+    if len(grp) > 22:
+        grp = grp[:20] + "…"
+
+    # Sender formatting
+    clean_sender = str(sender_name or "User").lstrip("@")
+    if is_bot:
+        sender_badge = "[bold bright_green]🤖 NexusBot[/bold bright_green]"
+    elif is_admin:
+        sender_badge = f"[bold bright_yellow]★ @{clean_sender}[/bold bright_yellow]"
+    else:
+        ucolor = get_user_color(clean_sender)
+        sender_badge = f"[bold {ucolor}]@{clean_sender}[/bold {ucolor}]"
+
+    group_badge = f"[bold bright_cyan][{grp}][/bold bright_cyan]"
+
+    # Action content formatting
+    act = action_type.lower()
+    if act == "text":
+        action_text = f'[bright_white]"{content}"[/bright_white]'
+    elif act in ("reel", "clip", "reel_share"):
+        extra = f" [dim white]({content[:35]}…)[/dim white]" if content else ""
+        action_text = f"[bold bright_red]🎬 Shared a Reel[/bold bright_red]{extra}"
+    elif act == "media_share":
+        extra = f" [dim white]({content[:35]}…)[/dim white]" if content else ""
+        action_text = f"[bold bright_blue]📸 Shared a Post[/bold bright_blue]{extra}"
+    elif act == "photo":
+        action_text = "[bold cyan]🖼️ Sent a Photo[/bold cyan]"
+    elif act == "video":
+        action_text = "[bold magenta]🎥 Sent a Video[/bold magenta]"
+    elif act in ("voice", "voice_media"):
+        action_text = "[bold yellow]🎙️ Sent a Voice Message[/bold yellow]"
+    elif act in ("sticker", "animated_media"):
+        action_text = "[bold bright_yellow]🎭 Sent a Sticker[/bold bright_yellow]"
+    elif act in ("story", "story_share"):
+        action_text = "[bold purple]📱 Shared a Story[/bold purple]"
+    elif act == "like":
+        action_text = "[bold red]❤️ Liked a message[/bold red]"
+    elif act == "join":
+        action_text = "[bold bright_green]👋 Joined the group[/bold bright_green]"
+    elif act == "left":
+        action_text = "[bold bright_red]🚪 Left the group[/bold bright_red]"
+    elif act == "command":
+        action_text = f"[bold bright_yellow]⚡ Command:[/] [bright_white]{content}[/bright_white]"
+    elif act == "reply":
+        action_text = f"[bold bright_green]🤖 Bot Reply:[/] [bright_white]{content}[/bright_white]"
+    elif act == "warn":
+        action_text = f"[bold bright_red]🛡️ Warning:[/] [bright_white]{content}[/bright_white]"
+    else:
+        action_text = f"[bright_white]{content or action_type}[/bright_white]"
+
+    _con.print(f" [dim bright_black]{stamp}[/] {group_badge} : {sender_badge} : {action_text}")
+
+
 # ── Startup dashboard ───────────────────────────────────────────────
 
-def startup(config, account_name, account_id):
+def startup(config, account_name, account_id, target_group_name="All Groups"):
     banner()
 
-    # Account table
-    section("ACCOUNT")
-    acct_table = Table(
+    status_table = Table(
         show_header=False,
-        box=box.SIMPLE,
-        padding=(0, 1),
+        box=box.ROUNDED,
+        padding=(0, 2),
         expand=True,
-        show_edge=False,
     )
-    acct_table.add_column("Key", style="label", width=24)
-    acct_table.add_column("Value", style="value")
-    acct_table.add_row("Logged in as", f"{account_name} ({account_id})")
-    acct_table.add_row("Session file", config.session_file)
-    acct_table.add_row("Database", config.database_file)
-    acct_table.add_row("Target thread", config.target_thread_id or "all")
-    _con.print(acct_table)
+    status_table.add_column("Property", style="bold bright_cyan", width=22)
+    status_table.add_column("Value", style="bright_white")
 
-    # System table
-    section("SYSTEM")
-    sys_table = Table(
-        show_header=False,
-        box=box.SIMPLE,
-        padding=(0, 1),
-        expand=True,
-        show_edge=False,
-    )
-    sys_table.add_column("Key", style="label", width=24)
-    sys_table.add_column("Value", style="value")
-    sys_table.add_row("Mode", "Target group bot")
-    sys_table.add_row("AI chat mode", "[bold bright_green]18-Feature Traditional NLP Engine Active[/]")
-    sys_table.add_row("Command prefix", f"[bold bright_yellow]{config.command_prefix}[/]")
-    sys_table.add_row("Check interval", f"{config.poll_interval}s")
-    sys_table.add_row("Thread scan limit", str(config.thread_fetch_amount))
-    sys_table.add_row("Control users", str(len(config.admin_usernames) + len(config.admin_user_ids)))
-    sys_table.add_row("Config reload", "[bright_green]enabled[/]")
-    _con.print(sys_table)
+    clean_acct = str(account_name or "bot").lstrip("@")
+    status_table.add_row("🤖 Bot Account", f"[bold bright_green]@{clean_acct}[/bold bright_green]")
+    status_table.add_row("🎯 Target Group", f"[bold yellow]{target_group_name}[/bold yellow]")
+    status_table.add_row("⚡ Command Prefix", f"[bold bright_yellow]{config.command_prefix}[/bold bright_yellow]")
+    status_table.add_row("🛡️ Protection", "[bold bright_green]Active (Bad Words Filter + Auto-Warn)[/]")
+    status_table.add_row("📡 Status", "[bold bright_green]🟢 Online & Live Streaming Activity[/bold bright_green]")
+    _con.print(status_table)
 
-    section("LIVE LOG")
-    status("STARTED", "Press Ctrl+C to stop")
+    section("LIVE GROUP ACTIVITY STREAM")
+    _con.print("[dim cyan]Listening for messages, reels, photos, and commands (Ctrl+C to stop)...[/dim cyan]\n")
+
 
 
 # ── Login / Memory screens ──────────────────────────────────────────

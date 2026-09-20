@@ -291,6 +291,19 @@ class Storage:
     def get_group(self, thread_id):
         return self.conn.execute("SELECT * FROM group_settings WHERE thread_id = ?", (str(thread_id),)).fetchone()
 
+    def get_group_title(self, thread_id: str) -> str:
+        try:
+            row = self.conn.execute("SELECT title FROM group_settings WHERE thread_id = ?", (str(thread_id),)).fetchone()
+            if row and row["title"]:
+                return row["title"]
+            row_greet = self.conn.execute("SELECT title FROM greeted_threads WHERE thread_id = ?", (str(thread_id),)).fetchone()
+            if row_greet and row_greet["title"]:
+                return row_greet["title"]
+        except Exception:
+            pass
+        return "Group"
+
+
     def set_welcome(self, thread_id, message):
         self.conn.execute(
             """

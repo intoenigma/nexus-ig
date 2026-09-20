@@ -38,10 +38,12 @@ class CommandHandler:
         try:
             self.cl.direct_send(text, thread_ids=[thread_id])
             self.storage.mark_replied(message_id, thread_id)
-            console.success(f"Reply sent | thread {thread_id}")
+            grp_title = self.storage.get_group_title(thread_id)
+            preview = text.strip().split("\n")[0][:60]
+            console.log_activity(grp_title, "NexusBot", "reply", preview, is_bot=True)
         except Exception as exc:
             self.storage.mark_replied(message_id, thread_id)
-            console.warning(f"Direct send error for thread {thread_id}: {exc}")
+            console.warning(f"Direct send error: {exc}")
         if self.config.reply_delay_seconds > 0:
             time.sleep(self.config.reply_delay_seconds)
 
@@ -88,6 +90,8 @@ class CommandHandler:
         if result["blocked"]:
             bad_word = result.get("word") or "forbidden content"
             new_warn_count = self.storage.add_warning(thread.pk, last_msg.user_id, sender_name, f"Used forbidden word: {bad_word}")
+            grp_title = thread.thread_title or self.storage.get_group_title(thread.pk)
+            console.log_activity(grp_title, sender_name, "warn", f"Detected forbidden word: '{bad_word}' ({new_warn_count}/3)")
             
             warn_msg = (
                 "⚠️ FORBIDDEN WORD DETECTED! ⚠️\n"
@@ -177,7 +181,8 @@ class CommandHandler:
             return False
 
         clean_tail = raw_tail.lower()
-        console.status("COMMAND", f"@{sender_name}: {raw_tail or 'ping'}")
+        grp_title = thread.thread_title or self.storage.get_group_title(thread.pk)
+        console.log_activity(grp_title, sender_name, "command", raw_tail or 'ping', is_admin=self.is_admin(thread, last_msg.user_id))
 
         # Truth & Dare Game Commands
         if clean_tail.startswith("tdgame") or clean_tail.startswith("tdgame "):

@@ -29,3 +29,21 @@ def test_save_sessionid_to_env():
         assert len(matching) == 1
         assert matching[0].strip() == "SESSIONID=67890:def"
 
+
+def test_console_log_activity():
+    from nexus_ig.core import console
+    # Test color determination
+    color1 = console.get_user_color("swami")
+    color2 = console.get_user_color("karan")
+    assert isinstance(color1, str) and len(color1) > 0
+    assert isinstance(color2, str) and len(color2) > 0
+
+    # Ensure log_activity executes cleanly for all action types without throwing
+    console.log_activity("Anime GC", "swami", "text", "Hello there")
+    console.log_activity("Anime GC", "swami", "reel", "Meme video")
+    console.log_activity("Anime GC", "swami", "photo")
+    console.log_activity("Anime GC", "swami", "join")
+    console.log_activity("Anime GC", "swami", "command", "oli help", is_admin=True)
+    console.log_activity("Anime GC", "NexusBot", "reply", "Help menu sent", is_bot=True)
+
+
