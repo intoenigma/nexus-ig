@@ -7,6 +7,7 @@ from . import console
 from ..instagram.login import login_client
 from ..instagram.groups import is_group_thread
 from ..instagram.users import find_sender_name
+from ..services.reel_reactor import handle_reel_reaction
 from .scheduler import Scheduler
 from .storage import Storage
 
@@ -214,6 +215,23 @@ class NexusBot:
                                     is_bot=is_bot,
                                     is_admin=is_admin,
                                 )
+
+                                # 🎬 Auto-React to Reels based on Hashtags / Keywords
+                                is_reel = (
+                                    act_type in ("reel", "clip", "reel_share")
+                                    or getattr(msg, "item_type", "") in ("clip", "reel_share")
+                                    or (act_type == "link" and "instagram.com/reel" in act_content)
+                                )
+                                if not is_bot and is_reel:
+                                    reacted_emoji = handle_reel_reaction(self.cl, thread.pk, msg)
+                                    if reacted_emoji:
+                                        console.log_activity(
+                                            grp_title,
+                                            self.account_name or "NexusBot",
+                                            "reply",
+                                            f"Reacted {reacted_emoji} to @{sender_name}'s Reel",
+                                            is_bot=True,
+                                        )
 
                             try:
                                 self.handler.handle(thread, msg)

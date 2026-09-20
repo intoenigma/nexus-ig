@@ -163,7 +163,10 @@ class InstagramProvider:
         """Send emoji reaction to a specific direct message."""
         try:
             if hasattr(self.client, "direct_send_reaction"):
-                return self.client.direct_send_reaction(thread_id, message_id, emoji)
+                try:
+                    return self.client.direct_send_reaction(int(thread_id), str(message_id), emoji)
+                except Exception:
+                    return self.client.direct_send_reaction(str(thread_id), str(message_id), emoji)
             elif hasattr(self.client, "direct_message_react"):
                 return self.client.direct_message_react(thread_id, message_id, emoji)
         except Exception as exc:

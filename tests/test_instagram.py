@@ -47,3 +47,48 @@ def test_console_log_activity():
     console.log_activity("Anime GC", "NexusBot", "reply", "Help menu sent", is_bot=True)
 
 
+def test_reel_reaction_selection():
+    from nexus_ig.services.reel_reactor import get_reel_reaction_emoji, handle_reel_reaction
+    from unittest.mock import MagicMock
+
+    # Love category
+    love_emoji = get_reel_reaction_emoji("Check out this cute couple video #love #romance")
+    assert love_emoji in ["❤️", "🥰", "💖", "💕", "😍"]
+
+    # Funny category
+    funny_emoji = get_reel_reaction_emoji("Lmao so true 😂 #memes #funny #roast")
+    assert funny_emoji in ["😂", "🤣", "💀", "😹"]
+
+    # Fire category
+    fire_emoji = get_reel_reaction_emoji("Sigma male entry #attitude #savage #fire")
+    assert fire_emoji in ["🔥", "⚡", "😎", "💥", "💣"]
+
+    # Sad category
+    sad_emoji = get_reel_reaction_emoji("Heartbroken alone in the rain #sad #broken #cry")
+    assert sad_emoji in ["🥺", "💔", "😢", "🥀"]
+
+    # Anime category
+    anime_emoji = get_reel_reaction_emoji("Gojo domain expansion #anime #jujutsukaisen")
+    assert anime_emoji in ["✨", "⚡", "🌸", "⚔️", "🔥"]
+
+    # Fallback for unclassified reel (guaranteed reaction)
+    default_emoji = get_reel_reaction_emoji("")
+    assert isinstance(default_emoji, str) and len(default_emoji) > 0
+
+    # Test handle_reel_reaction with mock client
+    mock_cl = MagicMock()
+    mock_cl.direct_send_reaction.return_value = True
+    mock_msg = MagicMock()
+    mock_msg.id = "msg_123"
+    mock_msg.text = "#love cute moments"
+    mock_msg.reel_share = None
+    mock_msg.clip = None
+    mock_msg.media_share = None
+    mock_msg.xma_share = None
+
+    res = handle_reel_reaction(mock_cl, "thread_999", mock_msg)
+    assert res in ["❤️", "🥰", "💖", "💕", "😍"]
+    mock_cl.direct_send_reaction.assert_called_once()
+
+
+
