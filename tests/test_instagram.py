@@ -108,6 +108,10 @@ def test_reel_reaction_selection():
     mock_msg.media_share = None
     mock_msg.xma_share = None
     mock_msg.raw_xma = None
+    mock_msg.link = None
+    mock_msg.thread_id = None
+    mock_msg.client_context = None
+    mock_msg.item_type = "clip"
 
     res = handle_reel_reaction(mock_cl, "thread_999", mock_msg)
     assert res in ["❤️", "🥰", "💖", "💕", "😍"]

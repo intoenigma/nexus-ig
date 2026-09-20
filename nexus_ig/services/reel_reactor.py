@@ -354,10 +354,11 @@ def extract_reel_info(msg, cl=None) -> tuple[str, str | None]:
     # 7. link
     link = getattr(msg, "link", None)
     if link:
-        url_text = getattr(link, "text", "") or ""
-        parts.append(url_text)
-        if not target_url and ("instagram.com/reel" in url_text or "/reels/" in url_text or "/p/" in url_text):
-            target_url = url_text
+        url_text = str(getattr(link, "text", "") or "")
+        if url_text:
+            parts.append(url_text)
+            if not target_url and ("instagram.com/reel" in url_text or "/reels/" in url_text or "/p/" in url_text):
+                target_url = url_text
 
     # 8. Deep Reel Media Info Fetch via Instagram API
     if cl and (media_igid or target_url):
@@ -372,7 +373,7 @@ def extract_reel_info(msg, cl=None) -> tuple[str, str | None]:
         except Exception:
             pass
 
-    return " ".join(parts).strip(), (target_url or media_igid)
+    return " ".join(str(p) for p in parts if p).strip(), (target_url or media_igid)
 
 
 def extract_reel_text(msg) -> str:
@@ -404,13 +405,40 @@ def handle_reel_reaction(cl, thread_id: str, msg) -> str | None:
     try:
         reel_text, _ = extract_reel_info(msg, cl=cl)
         emoji = get_reel_reaction_emoji(reel_text)
-        success = cl.direct_send_reaction(thread_id, msg.id, emoji)
-        return emoji if success is not False else emoji
+
+        candidates = [str(thread_id)]
+        msg_tid = getattr(msg, "thread_id", None)
+        if msg_tid and str(msg_tid) not in candidates:
+            candidates.append(str(msg_tid))
+
+        client_ctx = getattr(msg, "client_context", None)
+        item_type = getattr(msg, "item_type", None)
+
+        for tid in candidates:
+            success = cl.direct_send_reaction(
+                tid,
+                msg.id,
+                emoji=emoji,
+                client_context=client_ctx,
+                target_item_type=item_type,
+            )
+            if success:
+                return emoji
+
+        # Fallback with standard heart if custom emoji had any issue
+        for tid in candidates:
+            success = cl.direct_send_reaction(
+                tid,
+                msg.id,
+                emoji="❤️",
+                client_context=client_ctx,
+                target_item_type=item_type,
+            )
+            if success:
+                return "❤️"
+
+        console.warning(f"Reel reaction for msg {msg.id} was not accepted by Instagram")
+        return None
     except Exception as exc:
         console.warning(f"Reel reaction error: {exc}")
-        # Guaranteed fallback like reaction
-        try:
-            cl.direct_send_reaction(thread_id, msg.id, "❤️")
-            return "❤️"
-        except Exception:
-            return None
+        return None

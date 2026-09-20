@@ -163,18 +163,48 @@ class InstagramProvider:
                 return False
 
 
-    def direct_send_reaction(self, thread_id: str, message_id: str, emoji: str = "❤️"):
+    def direct_send_reaction(
+        self,
+        thread_id: str,
+        message_id: str,
+        emoji: str = "❤️",
+        client_context: str | None = None,
+        target_item_type: str | None = None,
+    ) -> bool:
         """Send emoji reaction to a specific direct message."""
         try:
             if hasattr(self.client, "direct_send_reaction"):
+                # 1. Try with int(thread_id)
                 try:
-                    return self.client.direct_send_reaction(int(thread_id), str(message_id), emoji)
+                    res = self.client.direct_send_reaction(
+                        int(thread_id),
+                        str(message_id),
+                        emoji=emoji,
+                        client_context=client_context,
+                        target_item_type=target_item_type,
+                    )
+                    if res:
+                        return True
                 except Exception:
-                    return self.client.direct_send_reaction(str(thread_id), str(message_id), emoji)
+                    pass
+
+                # 2. Try with str(thread_id)
+                try:
+                    res = self.client.direct_send_reaction(
+                        str(thread_id),
+                        str(message_id),
+                        emoji=emoji,
+                        client_context=client_context,
+                        target_item_type=target_item_type,
+                    )
+                    if res:
+                        return True
+                except Exception:
+                    pass
             elif hasattr(self.client, "direct_message_react"):
-                return self.client.direct_message_react(thread_id, message_id, emoji)
+                return bool(self.client.direct_message_react(thread_id, message_id, emoji))
         except Exception as exc:
-            print(f"Reaction error: {exc}")
+            console.warning(f"Reaction error: {exc}")
         return False
 
 
