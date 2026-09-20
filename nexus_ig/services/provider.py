@@ -174,35 +174,44 @@ class InstagramProvider:
         """Send emoji reaction to a specific direct message."""
         try:
             if hasattr(self.client, "direct_send_reaction"):
-                # 1. Try with int(thread_id)
-                try:
-                    res = self.client.direct_send_reaction(
-                        int(thread_id),
-                        str(message_id),
-                        emoji=emoji,
-                        client_context=client_context,
-                        target_item_type=target_item_type,
-                    )
-                    if res:
-                        return True
-                except Exception:
-                    pass
+                # Try permutations of arguments (str vs int thread_id, with vs without metadata)
+                t_ids = [str(thread_id)]
+                if str(thread_id).isdigit():
+                    try:
+                        t_ids.append(int(thread_id))
+                    except Exception:
+                        pass
 
-                # 2. Try with str(thread_id)
+                for tid in t_ids:
+                    # 1. With full metadata (client_context & target_item_type)
+                    try:
+                        if self.client.direct_send_reaction(
+                            tid,
+                            str(message_id),
+                            emoji=emoji,
+                            client_context=client_context,
+                            target_item_type=target_item_type,
+                        ):
+                            return True
+                    except Exception:
+                        pass
+
+                    # 2. Simplified fallback (without extra metadata)
+                    try:
+                        if self.client.direct_send_reaction(
+                            tid,
+                            str(message_id),
+                            emoji=emoji,
+                        ):
+                            return True
+                    except Exception:
+                        pass
+
+            if hasattr(self.client, "direct_message_react"):
                 try:
-                    res = self.client.direct_send_reaction(
-                        str(thread_id),
-                        str(message_id),
-                        emoji=emoji,
-                        client_context=client_context,
-                        target_item_type=target_item_type,
-                    )
-                    if res:
-                        return True
+                    return bool(self.client.direct_message_react(str(thread_id), str(message_id), emoji))
                 except Exception:
                     pass
-            elif hasattr(self.client, "direct_message_react"):
-                return bool(self.client.direct_message_react(thread_id, message_id, emoji))
         except Exception as exc:
             console.warning(f"Reaction error: {exc}")
         return False
