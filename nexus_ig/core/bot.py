@@ -268,11 +268,14 @@ class NexusBot:
                 break
             except Exception as exc:
                 err_str = str(exc).lower()
-                if "login_required" in err_str or "loginrequired" in err_str:
-                    console.warning(f"Session expired during polling: {exc}")
+                if any(k in err_str for k in ("login_required", "loginrequired", "467", "401", "403", "checkpoint", "challenge")):
+                    console.warning(f"Session expired or invalidated ({exc}). Attempting auto-reauthentication...")
                     if self.reauthenticate():
                         time.sleep(1)
                         continue
+                    else:
+                        console.error("Auto-reauthentication failed (HTTP 467 / Checkpoint).")
+                        console.warning("💡 HINT: If you are running the bot on both Laptop and Phone simultaneously, Instagram revokes the session on both! Please run the bot on ONLY ONE device at a time.")
                 console.error(f"Polling failed: {exc}")
                 console.warning("Retrying in 60 seconds")
                 time.sleep(60)
