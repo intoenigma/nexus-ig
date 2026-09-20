@@ -4,7 +4,6 @@ urllib3
 python-dotenv
 symspellpy
 rapidfuzz
-pydantic
 diskcache
 beautifulsoup4
 feedparser

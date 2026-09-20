@@ -1,16 +1,22 @@
+from dataclasses import dataclass, field
 from typing import List, Optional
-from pydantic import BaseModel, Field
-import dateparser
+
+try:
+    import dateparser
+except ImportError:
+    dateparser = None
 
 
-class ExtractedEntities(BaseModel):
+@dataclass
+class ExtractedEntities:
     """Named Entity Extraction output."""
 
-    people: List[str] = Field(default_factory=list)
-    places: List[str] = Field(default_factory=list)
-    dates_times: List[str] = Field(default_factory=list)
-    technologies: List[str] = Field(default_factory=list)
+    people: List[str] = field(default_factory=list)
+    places: List[str] = field(default_factory=list)
+    dates_times: List[str] = field(default_factory=list)
+    technologies: List[str] = field(default_factory=list)
     raw_parsed_date: Optional[str] = None
+
 
 
 class EntityExtractor:
@@ -51,15 +57,17 @@ class EntityExtractor:
             if w.startswith("@") and len(w) > 1:
                 entities.people.append(w.lstrip("@"))
 
-        try:
-            parsed_dt = dateparser.parse(
-                norm_text,
-                settings={"PREFER_DATES_FROM": "future", "RELATIVE_BASE": None},
-            )
-            if parsed_dt:
-                entities.dates_times.append(parsed_dt.strftime("%Y-%m-%d %H:%M"))
-                entities.raw_parsed_date = str(parsed_dt)
-        except Exception:
-            pass
+        if dateparser:
+            try:
+                parsed_dt = dateparser.parse(
+                    norm_text,
+                    settings={"PREFER_DATES_FROM": "future", "RELATIVE_BASE": None},
+                )
+                if parsed_dt:
+                    entities.dates_times.append(parsed_dt.strftime("%Y-%m-%d %H:%M"))
+                    entities.raw_parsed_date = str(parsed_dt)
+            except Exception:
+                pass
+
 
         return entities

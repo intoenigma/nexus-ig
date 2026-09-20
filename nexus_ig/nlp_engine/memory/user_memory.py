@@ -1,10 +1,11 @@
 import time
+from dataclasses import dataclass, field, asdict
 from typing import Dict, Optional
-from pydantic import BaseModel, Field
 from .long_term import LongTermMemory
 
 
-class UserProfile(BaseModel):
+@dataclass
+class UserProfile:
     """User personality & long-term memory model."""
 
     user_id: str
@@ -14,10 +15,13 @@ class UserProfile(BaseModel):
     total_messages: int = 0
     question_count: int = 0
     emoji_count: int = 0
-    favorite_topics: Dict[str, int] = Field(default_factory=dict)
-    known_facts: Dict[str, str] = Field(default_factory=dict)
+    favorite_topics: Dict[str, int] = field(default_factory=dict)
+    known_facts: Dict[str, str] = field(default_factory=dict)
     communication_style: str = "casual"  # casual, technical, brief, verbose
-    last_seen: float = Field(default_factory=time.time)
+    last_seen: float = field(default_factory=time.time)
+
+    def model_dump(self):
+        return asdict(self)
 
 
 class UserMemoryManager:
@@ -42,3 +46,4 @@ class UserMemoryManager:
         key = f"user_profile:{profile.user_id}"
         profile.last_seen = time.time()
         self.long_term.set(key, profile.model_dump())
+

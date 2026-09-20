@@ -1,21 +1,24 @@
 import time
 from collections import deque
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 
-class ChatMessage(BaseModel):
+@dataclass
+class ChatMessage:
     """Incoming & Outgoing chat message data model."""
 
-    message_id: str = Field(default_factory=lambda: str(int(time.time() * 1000)))
-    thread_id: str = Field(default="global_thread")
-    user_id: str = Field(default="user_default")
-    user_name: str = Field(default="User")
-    text: str = Field(..., min_length=1)
-    timestamp: float = Field(default_factory=time.time)
+    text: str
+    message_id: str = field(default_factory=lambda: str(int(time.time() * 1000)))
+    thread_id: str = "global_thread"
+    user_id: str = "user_default"
+    user_name: str = "User"
+    timestamp: float = field(default_factory=time.time)
     reply_to_user_id: Optional[str] = None
     replied_to_text: Optional[str] = None
     is_bot_mentioned: bool = False
+
 
 
 class ShortTermMemory:

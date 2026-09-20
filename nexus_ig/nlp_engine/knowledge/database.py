@@ -1,13 +1,14 @@
 import sqlite3
 import time
 import os
+from dataclasses import dataclass, field, asdict
 from typing import Optional
-from pydantic import BaseModel, Field
 from rapidfuzz import process, fuzz
 from ..memory.long_term import LongTermMemory
 
 
-class KnowledgeFact(BaseModel):
+@dataclass
+class KnowledgeFact:
     """Knowledge base fact entry with confidence scoring."""
 
     subject: str
@@ -16,8 +17,11 @@ class KnowledgeFact(BaseModel):
     confidence: float = 0.5  # 0.0 to 1.0 (prevents unverified claims from becoming DB truth)
     source: str = "user_input"
     confirmations: int = 1
-    created_at: float = Field(default_factory=time.time)
-    updated_at: float = Field(default_factory=time.time)
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+
+    def model_dump(self):
+        return asdict(self)
 
 
 class FactDatabase:
@@ -41,6 +45,7 @@ class FactDatabase:
                 return fact
             except Exception:
                 pass
+
 
         fact = KnowledgeFact(
             subject=subject,

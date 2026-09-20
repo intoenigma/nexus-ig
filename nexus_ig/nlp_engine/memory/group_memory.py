@@ -1,17 +1,23 @@
 import time
+from dataclasses import dataclass, field, asdict
 from typing import List, Set
-from pydantic import BaseModel, Field
 from .long_term import LongTermMemory
 
 
-class TopicState(BaseModel):
+@dataclass
+class TopicState:
     """Group topic tracking model."""
 
     current_topic: str = "general"
     previous_topic: str = "general"
-    topic_stack: List[str] = Field(default_factory=lambda: ["general"])
-    participants: Set[str] = Field(default_factory=set)
-    last_updated: float = Field(default_factory=time.time)
+    topic_stack: List[str] = field(default_factory=lambda: ["general"])
+    participants: Set[str] = field(default_factory=set)
+    last_updated: float = field(default_factory=time.time)
+
+    def model_dump(self):
+        d = asdict(self)
+        d["participants"] = list(self.participants)
+        return d
 
 
 class GroupMemoryManager:
@@ -33,3 +39,4 @@ class GroupMemoryManager:
         self.topic_state.participants.add(user_name)
         self.topic_state.last_updated = time.time()
         self.long_term.set("group_topic_state", self.topic_state.model_dump())
+
