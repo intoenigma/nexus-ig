@@ -67,8 +67,9 @@ class StrictNLPBot:
     - LEVEL 3: DEEP          -> ChatterBot SQLite lookup, knowledge search, graph traversal, response ranking.
     """
 
-    def __init__(self):
+    def __init__(self, storage=None):
         console.status("INIT", "Initializing 3-Tier Layered Brain Architecture...")
+        self.storage = storage
 
         # Core Memory & Per-Group / Per-User Stores
         self.long_term_memory = LongTermMemory()
@@ -84,8 +85,11 @@ class StrictNLPBot:
         self.topic_extractor = TopicExtractor()
 
         # Level 3 Knowledge, Graph, & ChatterBot SQLite Database
+        db_path = getattr(storage, "db_path", "data/chatterbot_memory.db") if storage else "data/chatterbot_memory.db"
         self.fact_db = FactDatabase(self.long_term_memory)
-        self.statement_db = SQLiteStatementDatabase()
+        self.statement_db = SQLiteStatementDatabase(db_path=db_path)
+        if storage:
+            self.statement_db.auto_train_from_storage(storage)
         self.kb = KnowledgeIndex()
         self.graph = KnowledgeGraph()
 
@@ -202,10 +206,12 @@ class StrictNLPBot:
 
         # Check ChatterBot SQLite Statement DB for learned conversational pair
         if not reply_text:
-            learned_stmt = self.statement_db.find_best_response(message.text)
+            recent_texts = " ".join([m.text for m in self.short_term_memory.get_recent(count=3) if m.text and m.text != message.text])
+            learned_stmt = self.statement_db.find_best_response(message.text, context_text=recent_texts)
             if learned_stmt:
                 reply_text = learned_stmt
                 source_module = "sqlite_chatterbot_memory"
+
 
         if not reply_text:
             reply_text, source_module = self.response_generator.generate(

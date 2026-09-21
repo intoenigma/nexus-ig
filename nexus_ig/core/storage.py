@@ -217,6 +217,36 @@ class Storage:
 
             CREATE INDEX IF NOT EXISTS idx_reactions_msg
                 ON message_reactions (message_id);
+
+            CREATE TABLE IF NOT EXISTS group_activity (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                thread_id         TEXT NOT NULL,
+                group_title       TEXT,
+                user_id           TEXT,
+                username          TEXT,
+                action_type       TEXT NOT NULL,
+                content           TEXT,
+                reply_to_msg_id   TEXT,
+                reply_to_user_id  TEXT,
+                reply_to_username TEXT,
+                reply_to_text     TEXT,
+                reel_url          TEXT,
+                reel_author       TEXT,
+                reel_caption      TEXT,
+                bot_reaction      TEXT,
+                reactions_json    TEXT,
+                message_id        TEXT,
+                created_at        INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_group_activity_thread
+                ON group_activity (thread_id, created_at DESC);
+
+            CREATE INDEX IF NOT EXISTS idx_group_activity_user
+                ON group_activity (user_id, created_at DESC);
+
+            CREATE INDEX IF NOT EXISTS idx_group_activity_msg
+                ON group_activity (message_id);
             """
         )
         self.conn.commit()
@@ -410,6 +440,27 @@ class Storage:
         )
         self.conn.commit()
         return joined, left
+
+    def get_message(self, message_id: str) -> dict | None:
+        if not message_id:
+            return None
+        try:
+            with self.conn:
+                cursor = self.conn.execute(
+                    "SELECT * FROM messages WHERE message_id = ?",
+                    (str(message_id),),
+                )
+                row = cursor.fetchone()
+                if row:
+                    return dict(row)
+                cursor = self.conn.execute(
+                    "SELECT message_id, thread_id, user_id, username, content AS text FROM group_activity WHERE message_id = ?",
+                    (str(message_id),),
+                )
+                row = cursor.fetchone()
+                return dict(row) if row else None
+        except Exception:
+            return None
 
     def recent_messages(self, thread_id, user_id, seconds):
         cutoff = int(time.time()) - seconds
@@ -954,3 +1005,84 @@ class Storage:
             except Exception:
                 rows = []
         return [{"username": r["username"], "user_id": r["user_id"]} for r in rows if r["username"]]
+
+    # ------------------------------------------------------------------
+    # Group Activity Logging & Querying
+    # ------------------------------------------------------------------
+
+    def log_group_activity(
+        self,
+        thread_id: str,
+        group_title: str | None,
+        user_id: str | None,
+        username: str | None,
+        action_type: str,
+        content: str | None = None,
+        reply_to_msg_id: str | None = None,
+        reply_to_user_id: str | None = None,
+        reply_to_username: str | None = None,
+        reply_to_text: str | None = None,
+        reel_url: str | None = None,
+        reel_author: str | None = None,
+        reel_caption: str | None = None,
+        bot_reaction: str | None = None,
+        reactions_json: str | None = None,
+        message_id: str | None = None,
+        created_at: int | None = None,
+    ) -> int:
+        now = created_at if created_at and created_at > 0 else int(time.time())
+        with self.conn:
+            cursor = self.conn.execute(
+                """INSERT INTO group_activity (
+                    thread_id, group_title, user_id, username, action_type, content,
+                    reply_to_msg_id, reply_to_user_id, reply_to_username, reply_to_text,
+                    reel_url, reel_author, reel_caption, bot_reaction, reactions_json, message_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    str(thread_id),
+                    group_title,
+                    str(user_id) if user_id else "",
+                    username,
+                    action_type,
+                    content,
+                    reply_to_msg_id,
+                    reply_to_user_id,
+                    reply_to_username,
+                    reply_to_text,
+                    reel_url,
+                    reel_author,
+                    reel_caption,
+                    bot_reaction,
+                    reactions_json,
+                    message_id,
+                    now,
+                ),
+            )
+            return cursor.lastrowid
+
+    def update_activity_reactions(self, message_id: str, reactions_json: str):
+        with self.conn:
+            self.conn.execute(
+                "UPDATE group_activity SET reactions_json = ? WHERE message_id = ?",
+                (reactions_json, str(message_id)),
+            )
+
+    def get_recent_group_activity(self, thread_id: str, limit: int = 20) -> list[dict]:
+        cursor = self.conn.execute(
+            """SELECT * FROM group_activity
+               WHERE thread_id = ?
+               ORDER BY created_at DESC, id DESC
+               LIMIT ?""",
+            (str(thread_id), limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+    def get_user_activity(self, thread_id: str, user_id: str, limit: int = 10) -> list[dict]:
+        cursor = self.conn.execute(
+            """SELECT * FROM group_activity
+               WHERE thread_id = ? AND user_id = ?
+               ORDER BY created_at DESC, id DESC
+               LIMIT ?""",
+            (str(thread_id), str(user_id), limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]

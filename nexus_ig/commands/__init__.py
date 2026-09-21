@@ -32,15 +32,39 @@ class CommandHandler:
         self.start_time = int(time.time())
         self.td_game = TruthAndDareGame()
         self.moderation = ModerationEngine(config, storage)
-        self.chatbot = StrictNLPBot()
+        self.chatbot = StrictNLPBot(storage=storage)
 
     def send_and_mark(self, thread_id, text, message_id):
+        bot_msg_id = None
         try:
-            self.cl.direct_send(text, thread_ids=[thread_id])
+            sent = self.cl.direct_send(text, thread_ids=[thread_id])
+            if sent:
+                msg_obj = sent[0] if isinstance(sent, list) and sent else sent
+                bot_msg_id = str(getattr(msg_obj, "id", None) or getattr(msg_obj, "item_id", None) or getattr(msg_obj, "pk", None) or "")
             self.storage.mark_replied(message_id, thread_id)
             grp_title = self.storage.get_group_title(thread_id)
             preview = text.strip().split("\n")[0][:60]
             console.log_activity(grp_title, "NexusBot", "reply", preview, is_bot=True)
+
+            # Log bot reply into group_activity table with reference to original message
+            orig_msg = self.storage.get_message(message_id) if message_id else None
+            reply_to_uid = orig_msg.get("user_id") if orig_msg else None
+            reply_to_uname = orig_msg.get("username") if orig_msg else None
+            reply_to_text = orig_msg.get("text") if orig_msg else None
+
+            self.storage.log_group_activity(
+                thread_id=thread_id,
+                group_title=grp_title,
+                user_id=self.my_pk,
+                username=getattr(self.cl, "username", None) or "NexusBot",
+                action_type="bot_reply",
+                content=text,
+                reply_to_msg_id=message_id,
+                reply_to_user_id=reply_to_uid,
+                reply_to_username=reply_to_uname,
+                reply_to_text=reply_to_text,
+                message_id=bot_msg_id,
+            )
         except Exception as exc:
             self.storage.mark_replied(message_id, thread_id)
             console.warning(f"Direct send error: {exc}")
@@ -227,6 +251,29 @@ class CommandHandler:
             self.send_and_mark(thread.pk, msg, last_msg.id)
             return True
 
+        # Group Activity Log Command
+        if clean_tail in ("activity", "log", "logs", "activitylog"):
+            recent_acts = self.storage.get_recent_group_activity(thread.pk, limit=10)
+            if not recent_acts:
+                self.send_and_mark(thread.pk, "📋 No activity logged yet in database.", last_msg.id)
+                return True
+
+            lines = ["📋 RECENT GROUP ACTIVITY LOG 📋", "━━━━━━━━━━━━━━━━━━━━"]
+            for a in recent_acts:
+                u_name = f"@{a['username']}" if a.get('username') else "User"
+                act = a.get('action_type', 'action')
+                cnt = a.get('content') or ''
+                reply_txt = f" ↩️ (reply to @{a['reply_to_username']})" if a.get('reply_to_username') else ""
+                bot_rx = f" [Reacted {a['bot_reaction']}]" if a.get('bot_reaction') else ""
+
+                snippet = (cnt[:35] + "...") if len(cnt) > 35 else cnt
+                lines.append(f"• {u_name} [{act}]: {snippet}{reply_txt}{bot_rx}")
+
+            lines.append("━━━━━━━━━━━━━━━━━━━━")
+            lines.append("💾 All activities stored in SQLite `group_activity` table!")
+            self.send_and_mark(thread.pk, "\n".join(lines), last_msg.id)
+            return True
+
         # oli know @user command
         if clean_tail.startswith("know"):
             target = raw_tail.replace("know", "").strip().lstrip("@")
@@ -319,9 +366,10 @@ class CommandHandler:
                 self.send_and_mark(thread.pk, msg, last_msg.id)
                 return True
 
-        if clean_tail in ("", "hi", "hello"):
+        if clean_tail == "":
             self.send_and_mark(thread.pk, f"Hello @{sender_name}! Send '{self.config.command_prefix} help' for all commands menu.", last_msg.id)
             return True
+
 
 
         if clean_tail in ("help", "menu", "commands"):

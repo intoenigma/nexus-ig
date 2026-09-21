@@ -31,7 +31,9 @@ _ITEM_TYPE_MAP = {
     "animated_media": "sticker",
     "voice_media": "voice",
     "clip": "reel",
-    "reel_share": "reel_share",
+    "xma_clip": "reel",
+    "generic_xma": "reel",
+    "reel_share": "reel",
     "media_share": "media_share",
     "story_share": "story_share",
     "xma_share": "xma",
@@ -194,8 +196,8 @@ class MessageArchiver:
     def _archive_one(self, msg, thread_id: str, thread_title: str, user_map: dict):
         """Extract every available field from a DirectMessage and persist it."""
         try:
-            msg_id = str(msg.id)
-            user_id = str(msg.user_id)
+            msg_id = str(getattr(msg, "id", None) or getattr(msg, "item_id", None) or getattr(msg, "pk", None) or "")
+            user_id = str(getattr(msg, "user_id", None) or getattr(msg, "pk", None) or "")
             username, full_name = user_map.get(user_id, (None, None))
 
             sent_at = self._parse_timestamp(msg)
@@ -240,6 +242,29 @@ class MessageArchiver:
             self.storage.archive_message(**data)
             self.storage.touch_member(thread_id, user_id, username, data.get("text"))
 
+            # Log into unified group_activity table
+            reply_uid = data.get("replied_to_user_id")
+            reply_uname = data.get("replied_to_username") or (user_map.get(str(reply_uid), (None, None))[0] if reply_uid else None)
+
+            self.storage.log_group_activity(
+                thread_id=thread_id,
+                group_title=thread_title,
+                user_id=user_id,
+                username=username,
+                action_type=item_type,
+                content=data.get("text") or data.get("share_caption") or data.get("link_title"),
+                reply_to_msg_id=data.get("replied_to_message_id"),
+                reply_to_user_id=reply_uid,
+                reply_to_username=reply_uname,
+                reply_to_text=data.get("replied_to_text"),
+                reel_url=data.get("share_url") if item_type in ("reel", "reel_share", "media_share") else None,
+                reel_author=data.get("share_author") or data.get("share_type"),
+                reel_caption=data.get("share_caption"),
+                reactions_json=data.get("reactions_json"),
+                message_id=msg_id,
+                created_at=sent_at,
+            )
+
             # Persist reactions to the normalized message_reactions table
             for r in reactions:
                 uid = r.get("user_id", "")
@@ -270,16 +295,25 @@ class MessageArchiver:
     def _extract_reply_context(self, msg) -> dict:
         """Extract comprehensive information about which message/user this message is replying to."""
         reply = (
-            getattr(msg, "replied_to_message", None)
+            getattr(msg, "reply", None)
+            or getattr(msg, "replied_to_message", None)
             or getattr(msg, "reply_to_message", None)
             or getattr(msg, "reply_to", None)
             or getattr(msg, "replied_message", None)
             or getattr(msg, "replied_to", None)
         )
 
+        if not reply and hasattr(msg, "dict"):
+            try:
+                d = msg.dict()
+                reply = d.get("reply") or d.get("replied_to_message") or d.get("reply_to_message") or d.get("reply_to")
+            except Exception:
+                pass
+
         if not reply and isinstance(msg, dict):
             reply = (
-                msg.get("replied_to_message")
+                msg.get("reply")
+                or msg.get("replied_to_message")
                 or msg.get("reply_to_message")
                 or msg.get("reply_to")
                 or msg.get("replied_message")

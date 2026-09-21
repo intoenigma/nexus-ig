@@ -232,6 +232,14 @@ class NexusBot:
                                 if not is_bot and is_reel_message(msg):
                                     reacted_emoji = handle_reel_reaction(self.cl, thread.pk, msg)
                                     if reacted_emoji:
+                                        try:
+                                            with self.storage.conn:
+                                                self.storage.conn.execute(
+                                                    "UPDATE group_activity SET bot_reaction = ? WHERE message_id = ?",
+                                                    (reacted_emoji, str(msg.id)),
+                                                )
+                                        except Exception:
+                                            pass
                                         console.log_activity(
                                             grp_title,
                                             self.account_name or "NexusBot",
