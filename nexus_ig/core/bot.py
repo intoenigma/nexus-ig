@@ -93,6 +93,8 @@ class NexusBot:
             self.cl.apply_config(latest)
 
     def welcome_new_group(self, thread):
+        if getattr(self.config, "maintenance_mode", False):
+            return
         if self.config.target_thread_id and str(thread.pk) != self.config.target_thread_id:
             return
         if not is_group_thread(thread) or self.storage.has_greeted(thread.pk):
@@ -128,7 +130,7 @@ class NexusBot:
         for user_id, username in joined:
             self.storage.touch_member(thread.pk, user_id, username, "joined")
             console.log_activity(grp_title, username, "join")
-            if known_group and welcome_enabled:
+            if known_group and welcome_enabled and not getattr(self.config, "maintenance_mode", False):
                 self.cl.direct_send(
                     f"Welcome @{username}\n\n{welcome_message}\n\nGroup rules\n{self.config.rules_message}",
                     thread_ids=[thread.pk],
@@ -229,7 +231,7 @@ class NexusBot:
                                 )
 
                                 # 🎬 Auto-React to Reels based on Hashtags / Keywords
-                                if not is_bot and is_reel_message(msg):
+                                if not is_bot and is_reel_message(msg) and not getattr(self.config, "maintenance_mode", False):
                                     reacted_emoji = handle_reel_reaction(self.cl, thread.pk, msg)
                                     if reacted_emoji:
                                         try:
@@ -254,7 +256,7 @@ class NexusBot:
                                 console.warning(f"Error handling message: {exc}")
 
                     self.welcome_new_group(thread)
-                    if is_group_thread(thread):
+                    if is_group_thread(thread) and not getattr(self.config, "maintenance_mode", False):
                         self.scheduler.run_for_thread(thread)
 
                 self.storage.prune_replied(self.config.max_replied_messages)

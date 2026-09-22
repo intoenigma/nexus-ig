@@ -189,6 +189,11 @@ class CommandHandler:
         # Mark message as replied IMMEDIATELY to prevent double execution / loops
         self.storage.mark_replied(last_msg.id, thread.pk)
 
+        # 🚧 Maintenance / Offline Mode Guard (.env MAINTENANCE_MODE=true)
+        if getattr(self.config, "maintenance_mode", False):
+            self.send_and_mark(thread.pk, getattr(self.config, "maintenance_message", "Bot band hai, kal aana! 😴"), last_msg.id)
+            return True
+
         # Ignore old history command messages (older than 5 minutes)
         raw_ts = getattr(last_msg, "timestamp", 0)
         msg_time = 0

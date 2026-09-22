@@ -40,6 +40,9 @@ class Config:
     daily_cooldown_hours: int
     level2_xp: int
     level3_xp: int
+    # Maintenance / Offline mode
+    maintenance_mode: bool
+    maintenance_message: str
 
 
 def load_config():
@@ -51,6 +54,10 @@ def load_config():
     admin_usernames = set(_csv(os.getenv("ADMIN_USERNAMES", "")))
     if owner_username:
         admin_usernames.add(owner_username)
+
+    m_mode_raw = os.getenv("MAINTENANCE_MODE", os.getenv("BOT_OFFLINE_MODE", "false")).strip().lower()
+    m_mode = m_mode_raw in ("true", "1", "yes", "on")
+    m_msg = os.getenv("MAINTENANCE_MESSAGE", os.getenv("BOT_OFFLINE_MESSAGE", "Bot band hai, kal aana! 😴")).strip()
 
     return Config(
         session_file=os.getenv("SESSION_FILE", "session.json"),
@@ -82,4 +89,6 @@ def load_config():
         daily_cooldown_hours=int(os.getenv("DAILY_COOLDOWN_HOURS", "20")),
         level2_xp=int(os.getenv("LEVEL2_XP", "500")),
         level3_xp=int(os.getenv("LEVEL3_XP", "2000")),
+        maintenance_mode=m_mode,
+        maintenance_message=m_msg,
     )
