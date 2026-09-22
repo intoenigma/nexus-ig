@@ -1,3 +1,4 @@
+import re
 import time
 
 from ..services.archiver import MessageArchiver
@@ -141,6 +142,52 @@ class NexusBot:
 
         for _user_id, username in left:
             console.log_activity(grp_title, username, "left")
+            self.storage.touch_member(thread.pk, _user_id, username, "left")
+
+            if known_group and not getattr(self.config, "maintenance_mode", False):
+                # Check recent thread messages for action_log to determine if removed by admin or self-left
+                remover_name = None
+                is_removed = False
+
+                if getattr(thread, "messages", None):
+                    for msg in thread.messages[:15]:
+                        if getattr(msg, "item_type", "") == "action_log":
+                            log_obj = getattr(msg, "action_log", {}) or {}
+                            log_text = ""
+                            if isinstance(log_obj, dict):
+                                log_text = str(log_obj.get("description", "") or log_obj.get("text", "") or log_obj).lower()
+                            else:
+                                log_text = str(getattr(log_obj, "description", "") or getattr(log_obj, "text", "") or log_obj).lower()
+
+                            if "remove" in log_text or "removed" in log_text or "kicked" in log_text:
+                                is_removed = True
+                                match = re.search(r"(@?\w+)\s+removed\s+(@?\w+)", log_text)
+                                if match:
+                                    r_name, t_name = match.group(1).lstrip("@"), match.group(2).lstrip("@")
+                                    if t_name.lower() == username.lower():
+                                        remover_name = r_name
+                                break
+                            elif "left" in log_text:
+                                is_removed = False
+                                break
+
+                if is_removed:
+                    if remover_name and remover_name.lower() != username.lower():
+                        msg_text = f"🚫 MEMBER REMOVED 🚫\n━━━━━━━━━━━━━━━━━━━━\n👤 @{remover_name} ne @{username} ko group se remove kar diya hai! 🚨"
+                    else:
+                        msg_text = self.config.remove_message.replace("@username", f"@{username}")
+                    console.log_activity(grp_title, self.account_name or "NexusBot", "reply", f"Announced removal of @{username}", is_bot=True)
+                else:
+                    msg_text = self.config.leave_message.replace("@username", f"@{username}")
+                    console.log_activity(grp_title, self.account_name or "NexusBot", "reply", f"Announced leave of @{username}", is_bot=True)
+
+                try:
+                    self.cl.direct_send(msg_text, thread_ids=[thread.pk])
+                except Exception as exc:
+                    console.warning(f"Leave/remove notification send error: {exc}")
+
+                if self.config.reply_delay_seconds > 0:
+                    time.sleep(self.config.reply_delay_seconds)
 
     def dump_session_cookies(self):
         try:

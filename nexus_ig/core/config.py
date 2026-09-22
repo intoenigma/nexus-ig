@@ -43,6 +43,9 @@ class Config:
     # Maintenance / Offline mode
     maintenance_mode: bool
     maintenance_message: str
+    # Leave & Remove Notification Messages
+    leave_message: str
+    remove_message: str
 
 
 def load_config():
@@ -91,4 +94,6 @@ def load_config():
         level3_xp=int(os.getenv("LEVEL3_XP", "2000")),
         maintenance_mode=m_mode,
         maintenance_message=m_msg,
+        leave_message=os.getenv("LEAVE_MESSAGE", "🚪 @username group chhod ke chala gaya hai! Bye 👋").strip(),
+        remove_message=os.getenv("REMOVE_MESSAGE", "🚫 @username ko group se remove kar diya gaya hai! 🚨").strip(),
     )

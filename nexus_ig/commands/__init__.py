@@ -1,4 +1,4 @@
-from ..instagram.users import fetch_user_profile_instaloader
+from ..instagram.users import fetch_user_profile, fetch_user_profile_instaloader
 from .help import generate_help_text
 from .utility import handle_greeting, handle_ping, handle_rules
 from .fun import get_advice_card, get_joke_card, get_fact_card, get_bored_card, get_yesno_card, get_recipe_card
@@ -279,12 +279,13 @@ class CommandHandler:
             self.send_and_mark(thread.pk, "\n".join(lines), last_msg.id)
             return True
 
-        # oli know @user command
-        if clean_tail.startswith("know"):
-            target = raw_tail.replace("know", "").strip().lstrip("@")
+        # Instagram lookup command (know, whois, user, iguser, profile)
+        if any(clean_tail.startswith(cmd) for cmd in ["know", "whois", "user", "iguser", "profile"]):
+            cmd_used = next(cmd for cmd in ["know", "whois", "user", "iguser", "profile"] if clean_tail.startswith(cmd))
+            target = raw_tail.replace(cmd_used, "").strip().lstrip("@")
             if not target:
                 target = sender_name
-            profile = fetch_user_profile_instaloader(target)
+            profile = fetch_user_profile(target, cl=self.cl, thread=thread)
             if profile:
                 self.storage.save_user_profile_details(
                     thread.pk, profile["user_id"], profile["username"], profile["full_name"],
