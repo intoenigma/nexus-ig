@@ -31,7 +31,7 @@ class TestInstagramBot(unittest.TestCase):
             self.assertEqual(matching[0].strip(), "SESSIONID=67890:def")
 
     def test_console_log_activity(self):
-        from nexus_ig.core import console
+        from nexus_ig.app import console
         # Test color determination
         color1 = console.get_user_color("swami")
         color2 = console.get_user_color("karan")
@@ -117,7 +117,7 @@ class TestInstagramBot(unittest.TestCase):
         mock_cl.direct_send_reaction.assert_called_once()
 
     def test_group_activity_storage(self):
-        from nexus_ig.core.storage import Storage
+        from nexus_ig.app.database import Storage
         with tempfile.TemporaryDirectory() as tmpdir:
             db_file = os.path.join(tmpdir, "test_nexus.db")
             storage = Storage(db_file)

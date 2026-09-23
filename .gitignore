@@ -57,8 +57,6 @@ desktop.ini
 # Agents / AI Config (local only)
 # ==============================================================================
 .agents/
-
-
-
-
-faltu
+MagicMock/
+.pytest_cache/
+faltu/

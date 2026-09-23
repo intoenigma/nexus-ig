@@ -1,9 +1,0 @@
-"""Core constants for Nexus IG Bot."""
-
-VERSION = "3.0.0"
-APP_NAME = "Nexus IG Bot"
-DEFAULT_PREFIX = "nexus"
-DEFAULT_POLL_INTERVAL = 0.1
-DEFAULT_XP_PER_MESSAGE = 10
-DEFAULT_DAILY_COINS = 100
-

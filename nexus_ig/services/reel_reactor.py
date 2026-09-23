@@ -3,7 +3,7 @@
 import json
 import random
 import re
-from ..core import console
+from ..app import console
 
 
 # 22 Deep Reaction Categories (Keywords & Emojis)

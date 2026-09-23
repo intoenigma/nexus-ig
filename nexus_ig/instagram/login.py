@@ -1,7 +1,7 @@
 import os
 import urllib.parse
 
-from ..core import console
+from ..app import console
 from ..services.provider import InstagramProvider
 
 

@@ -1,5 +1,5 @@
 import sys
-from nexus_ig.core.bot import main
+from nexus_ig.app.bot import main
 
 if __name__ == "__main__":
     try:

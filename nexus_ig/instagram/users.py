@@ -27,7 +27,7 @@ def resolve_user_ids(cl, usernames: list[str]):
 
 import instaloader
 import requests
-from ..core import console
+from ..app import console
 
 
 def fetch_user_profile(username: str, cl=None, thread=None) -> dict:
@@ -122,7 +122,7 @@ def fetch_user_profile(username: str, cl=None, thread=None) -> dict:
 
     # Layer 4: Instaloader Fallback
     try:
-        L = instaloader.Instaloader()
+        L = instaloader.Instaloader(max_connection_attempts=1)
         profile = instaloader.Profile.from_username(L.context, clean_name)
         return {
             "user_id": str(profile.userid),

@@ -1,16 +1,10 @@
-"""
-Nexus IG 18-Feature Advanced Traditional NLP Group Chat Intelligence Engine.
-Delegates directly to modular subpackages inside nexus_ig.nlp_engine (brain, nlp, memory, knowledge, learning, response).
-"""
+"""Re-exporter for Chatbot engine components."""
 
-
-from ..nlp_engine import StrictNLPBot, ChatMessage, BotResponse, UserProfile, TopicState, KnowledgeFact
+from ..features.chatbot import StrictNLPBot, ChatMessage, BotResponse
 
 __all__ = [
     "StrictNLPBot",
     "ChatMessage",
     "BotResponse",
-    "UserProfile",
-    "TopicState",
-    "KnowledgeFact",
 ]
+

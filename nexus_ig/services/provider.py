@@ -1,7 +1,7 @@
 from instagrapi import Client
 import requests
 import time
-from ..core import console
+from ..app import console
 
 class InstagramProvider:
     """Enhanced adapter around instagrapi Client with device header hardening and request pacing."""

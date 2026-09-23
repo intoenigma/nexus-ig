@@ -21,7 +21,7 @@ import json
 import time
 from pathlib import Path
 
-from ..core import console
+from ..app import console
 
 
 # Map instagrapi item_type strings to our canonical labels stored in DB
